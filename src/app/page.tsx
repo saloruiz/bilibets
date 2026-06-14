@@ -15,6 +15,7 @@ export default function Hub() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
+  const [myName, setMyName] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
 
@@ -24,10 +25,18 @@ export default function Hub() {
   }, [])
 
   const createSession = async () => {
-    if (!newName.trim()) return
+    if (!newName.trim() || !myName.trim()) return
     setCreating(true)
     const { data, error } = await supabase.from('sessions').insert({ name: newName.trim() }).select().single()
     if (error || !data) { toast.error('Error creando bili'); setCreating(false); return }
+
+    // Seed creator as first participant at 100%
+    await supabase.from('players').insert({
+      session_id: data.id,
+      name: myName.trim(),
+      color: '#00e676',
+      percentage: 100,
+    })
 
     // Seed 16 default houses + entries
     const housesPayload = ['VERSUS','MARCAPUESTAS','SPORTIUM','BWIN','BET365','CODERE',
@@ -42,6 +51,7 @@ export default function Hub() {
 
     setSessions(prev => [data, ...prev])
     setNewName('')
+    setMyName('')
     setShowForm(false)
     setCreating(false)
     router.push(`/session/${data.id}`)
@@ -124,19 +134,32 @@ export default function Hub() {
           {/* Create form */}
           {showForm ? (
             <div className="rounded-2xl p-4 space-y-3" style={{ background: '#111827', border: '1px solid rgba(0,230,118,0.25)' }}>
-              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#6b7a99' }}>Nombre del registro</p>
-              <input
-                placeholder="Ej: Bili de Salo, Ronda Enero..."
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && createSession()}
-                autoFocus
-                className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none text-white"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
-              />
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#6b7a99' }}>Nombre del registro</p>
+                <input
+                  placeholder="Ej: Bili de Salo, Ronda Enero..."
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  autoFocus
+                  className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none text-white"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#6b7a99' }}>Tu nombre</p>
+                <input
+                  placeholder="Ej: Salo"
+                  value={myName}
+                  onChange={e => setMyName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && createSession()}
+                  className="w-full rounded-xl px-4 py-3 text-sm font-medium outline-none text-white"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                />
+                <p className="text-[10px] mt-1" style={{ color: '#6b7a99' }}>Se añadirá automáticamente con el 100% del beneficio</p>
+              </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => { setShowForm(false); setNewName('') }}
+                  onClick={() => { setShowForm(false); setNewName(''); setMyName('') }}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
                   style={{ background: 'rgba(255,255,255,0.05)', color: '#6b7a99' }}
                 >
@@ -144,7 +167,7 @@ export default function Hub() {
                 </button>
                 <button
                   onClick={createSession}
-                  disabled={creating || !newName.trim()}
+                  disabled={creating || !newName.trim() || !myName.trim()}
                   className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
                   style={{ background: '#00e676', color: '#0b0f1a' }}
                 >
