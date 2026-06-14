@@ -35,10 +35,10 @@ export type HouseEntry = {
   house_id: string
   bono_desc: string
   apuesta: number | null
-  contraapuesta_1: number | null
+  contraapuesta_1: string | null
   perdida: number | null
   bono: number | null
-  contraapuesta_2: number | null
+  contraapuesta_2: string | null
   beneficio_expr: string | null
   beneficio: number | null
   notes: string

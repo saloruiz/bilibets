@@ -1,5 +1,5 @@
 -- ============================================================
--- BILIBETS — Schema v2 (sessions/bilis)
+-- VILIBETS — Schema v2 (sessions/bilis)
 -- Run this in your Supabase SQL editor (replace previous schema)
 -- ============================================================
 
@@ -43,10 +43,10 @@ CREATE TABLE house_entries (
   house_id UUID REFERENCES session_houses(id) ON DELETE CASCADE UNIQUE NOT NULL,
   bono_desc TEXT DEFAULT '',
   apuesta NUMERIC(10,2) DEFAULT NULL,
-  contraapuesta_1 NUMERIC(10,2) DEFAULT NULL,
+  contraapuesta_1 TEXT DEFAULT NULL,         -- free-text note
   perdida NUMERIC(10,2) DEFAULT NULL,        -- always stored positive, subtracted in total
   bono NUMERIC(10,2) DEFAULT NULL,
-  contraapuesta_2 NUMERIC(10,2) DEFAULT NULL,
+  contraapuesta_2 TEXT DEFAULT NULL,         -- free-text note
   beneficio_expr TEXT DEFAULT NULL,          -- raw expression e.g. "6+7+8+9"
   beneficio NUMERIC(10,2) DEFAULT NULL,      -- evaluated result
   notes TEXT DEFAULT '',

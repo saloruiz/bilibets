@@ -79,7 +79,7 @@ export default function Hub() {
             style={{ background: 'linear-gradient(135deg,#00e676,#00b0ff)' }}>
             <Zap className="w-7 h-7 text-black" />
           </div>
-          <h1 className="text-4xl font-black tracking-tight text-white">BILIBETS</h1>
+          <h1 className="text-4xl font-black tracking-tight text-white">VILIBETS</h1>
           <p className="text-sm" style={{ color: '#6b7a99' }}>Selecciona o crea un registro de apuestas</p>
         </div>
 

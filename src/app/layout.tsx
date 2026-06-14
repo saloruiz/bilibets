@@ -9,7 +9,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Bilibets — Gestión de Apuestas",
+  title: "Vilibets — Gestión de Apuestas",
   description: "Panel de control para gestionar casas de apuestas y beneficios",
 };
 

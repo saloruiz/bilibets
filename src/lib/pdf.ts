@@ -26,7 +26,7 @@ export function generatePDF(
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.text('BILIBETS', M + 11, 15.5)
+  doc.text('VILIBETS', M + 11, 15.5)
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
@@ -131,11 +131,11 @@ export function generatePDF(
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
     doc.setFontSize(7); doc.setTextColor(107, 122, 153); doc.setFont('helvetica', 'normal')
-    doc.text(`Bilibets · ${session.name} · ${date} · Pág. ${i}/${pages}`, W / 2, 290, { align: 'center' })
+    doc.text(`Vilibets · ${session.name} · ${date} · Pág. ${i}/${pages}`, W / 2, 290, { align: 'center' })
   }
 
   const fname = playerName
-    ? `bilibets-${session.name.toLowerCase().replace(/\s+/g, '-')}-${playerName.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`
-    : `bilibets-${session.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`
+    ? `vilibets-${session.name.toLowerCase().replace(/\s+/g, '-')}-${playerName.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`
+    : `vilibets-${session.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`
   doc.save(fname)
 }
