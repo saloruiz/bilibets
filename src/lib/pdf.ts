@@ -1,219 +1,141 @@
 import { jsPDF } from 'jspdf'
-import type { BettingHouse, HouseEntry, Player } from './supabase'
-
-function calcTotal(entry: HouseEntry | undefined): number {
-  if (!entry) return 0
-  const perdida = entry.perdida ?? 0
-  const beneficio = entry.beneficio ?? 0
-  return perdida + beneficio
-}
+import type { Session, SessionHouse, HouseEntry, Player } from './supabase'
+import { calcTotal } from './supabase'
 
 export function generatePDF(
-  houses: BettingHouse[],
+  session: Session,
+  houses: SessionHouse[],
   entries: Record<string, HouseEntry>,
   players: Player[],
   playerName?: string
 ) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-  const pageWidth = 210
-  const margin = 15
-  const contentWidth = pageWidth - margin * 2
+  const W = 210
+  const M = 15
+  const CW = W - M * 2
 
-  // ─── Header ────────────────────────────────────────────────────────────────
-  doc.setFillColor(30, 30, 46)
-  doc.rect(0, 0, pageWidth, 42, 'F')
+  const grandTotal = houses.reduce((s, h) => s + calcTotal(entries[h.id]), 0)
+  const date = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+
+  // ─── Header ──────────────────────────────────────────────────────────────
+  doc.setFillColor(11, 15, 26)
+  doc.rect(0, 0, W, 44, 'F')
+  doc.setFillColor(0, 230, 118)
+  doc.roundedRect(M, 8, 8, 8, 1.5, 1.5, 'F')
 
   doc.setTextColor(255, 255, 255)
-  doc.setFontSize(22)
+  doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.text('BILIBETS', margin, 18)
+  doc.text('BILIBETS', M + 11, 15.5)
 
-  doc.setFontSize(10)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.setTextColor(180, 180, 200)
-  doc.text('Resumen de Apuestas', margin, 26)
-
-  const date = new Date().toLocaleDateString('es-ES', {
-    day: '2-digit', month: 'long', year: 'numeric'
-  })
-  doc.text(`Generado: ${date}`, margin, 33)
+  doc.setTextColor(107, 122, 153)
+  doc.text(session.name, M + 11, 22)
+  doc.text(`Generado: ${date}`, M, 33)
 
   if (playerName) {
-    doc.setTextColor(255, 215, 0)
+    doc.setTextColor(0, 230, 118)
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(11)
-    doc.text(`Informe para: ${playerName}`, pageWidth - margin, 26, { align: 'right' })
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(180, 180, 200)
+    doc.setFontSize(10)
+    doc.text(`Informe de: ${playerName}`, W - M, 33, { align: 'right' })
   }
 
-  // ─── Summary box ──────────────────────────────────────────────────────────
-  const activeHouses = houses.filter(h => h.is_active)
-  const grandTotal = activeHouses.reduce((sum, h) => sum + calcTotal(entries[h.id]), 0)
-  const perPerson = players.length > 0 ? grandTotal / players.length : 0
+  // ─── Summary box ─────────────────────────────────────────────────────────
+  let y = 52
+  doc.setFillColor(17, 24, 39)
+  doc.roundedRect(M, y, CW, 26, 3, 3, 'F')
+  doc.setDrawColor(255, 255, 255, 0.07)
 
-  let y = 50
+  const col = CW / 3
 
-  doc.setFillColor(245, 245, 255)
-  doc.roundedRect(margin, y, contentWidth, 28, 3, 3, 'F')
-  doc.setDrawColor(200, 200, 220)
-  doc.roundedRect(margin, y, contentWidth, 28, 3, 3, 'S')
+  // Grand total
+  doc.setTextColor(107, 122, 153); doc.setFontSize(7); doc.setFont('helvetica', 'normal')
+  doc.text('BENEFICIO TOTAL', M + 5, y + 8)
+  doc.setTextColor(grandTotal >= 0 ? 0 : 245, grandTotal >= 0 ? 230 : 101, grandTotal >= 0 ? 118 : 101)
+  doc.setFontSize(15); doc.setFont('helvetica', 'bold')
+  doc.text(`${grandTotal >= 0 ? '+' : ''}${grandTotal.toFixed(2)} €`, M + 5, y + 20)
 
-  const boxThird = contentWidth / 3
+  // Player specific
+  const targetPlayer = playerName ? players.find(p => p.name === playerName) : null
+  const myShare = targetPlayer ? grandTotal * (targetPlayer.percentage / 100) : null
 
-  // Total
-  doc.setTextColor(80, 80, 100)
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
-  doc.text('BENEFICIO TOTAL', margin + 10, y + 9)
-  doc.setTextColor(grandTotal >= 0 ? 22 : 200, grandTotal >= 0 ? 160 : 30, grandTotal >= 0 ? 80 : 30)
-  doc.setFontSize(16)
-  doc.setFont('helvetica', 'bold')
-  doc.text(`${grandTotal >= 0 ? '+' : ''}${grandTotal.toFixed(2)} €`, margin + 10, y + 21)
+  if (myShare !== null) {
+    doc.setTextColor(107, 122, 153); doc.setFontSize(7); doc.setFont('helvetica', 'normal')
+    doc.text('MI PARTE', M + col + 5, y + 8)
+    doc.setTextColor(myShare >= 0 ? 0 : 245, myShare >= 0 ? 230 : 101, myShare >= 0 ? 118 : 101)
+    doc.setFontSize(15); doc.setFont('helvetica', 'bold')
+    doc.text(`${myShare >= 0 ? '+' : ''}${myShare.toFixed(2)} €`, M + col + 5, y + 20)
+    doc.setTextColor(107, 122, 153); doc.setFontSize(7); doc.setFont('helvetica', 'normal')
+    doc.text(`(${targetPlayer!.percentage}% del total)`, M + col + 5, y + 25)
+  }
 
-  // Per person
-  doc.setTextColor(80, 80, 100)
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
-  doc.text('BENEFICIO POR PERSONA', margin + boxThird + 5, y + 9)
-  doc.setTextColor(perPerson >= 0 ? 22 : 200, perPerson >= 0 ? 160 : 30, perPerson >= 0 ? 80 : 30)
-  doc.setFontSize(16)
-  doc.setFont('helvetica', 'bold')
-  doc.text(`${perPerson >= 0 ? '+' : ''}${perPerson.toFixed(2)} €`, margin + boxThird + 5, y + 21)
-
-  // Players
-  doc.setTextColor(80, 80, 100)
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
-  doc.text('PARTICIPANTES', margin + boxThird * 2 + 5, y + 9)
-  doc.setTextColor(30, 30, 46)
-  doc.setFontSize(11)
-  doc.setFont('helvetica', 'bold')
-  doc.text(players.map(p => p.name).join(', '), margin + boxThird * 2 + 5, y + 21)
-
-  y += 36
-
-  // ─── Players breakdown ────────────────────────────────────────────────────
-  doc.setFillColor(30, 30, 46)
-  doc.roundedRect(margin, y, contentWidth, 8, 2, 2, 'F')
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'bold')
-  doc.text('DESGLOSE POR JUGADOR', margin + 4, y + 5.5)
-  y += 12
-
-  players.forEach(player => {
-    doc.setFillColor(250, 250, 255)
-    doc.rect(margin, y, contentWidth, 7, 'F')
-    doc.setTextColor(50, 50, 70)
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.text(player.name, margin + 4, y + 5)
-    doc.setFont('helvetica', 'normal')
-    const amount = perPerson >= 0 ? `+${perPerson.toFixed(2)} €` : `${perPerson.toFixed(2)} €`
-    doc.text(amount, pageWidth - margin - 4, y + 5, { align: 'right' })
-    y += 8
+  // Participants
+  doc.setTextColor(107, 122, 153); doc.setFontSize(7); doc.setFont('helvetica', 'normal')
+  doc.text('PARTICIPANTES', M + col * 2 + 5, y + 8)
+  let py = y + 14
+  players.forEach(p => {
+    const s = grandTotal * (p.percentage / 100)
+    doc.setTextColor(232, 234, 240); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold')
+    doc.text(`${p.name} (${p.percentage}%)`, M + col * 2 + 5, py)
+    doc.setTextColor(s >= 0 ? 0 : 245, s >= 0 ? 230 : 101, s >= 0 ? 118 : 101)
+    doc.text(`${s >= 0 ? '+' : ''}${s.toFixed(2)} €`, W - M - 5, py, { align: 'right' })
+    py += 6
   })
 
-  y += 6
+  y += 34
 
-  // ─── House table ──────────────────────────────────────────────────────────
-  doc.setFillColor(30, 30, 46)
-  doc.roundedRect(margin, y, contentWidth, 8, 2, 2, 'F')
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'bold')
-  doc.text('DETALLE POR CASA DE APUESTAS', margin + 4, y + 5.5)
-  y += 12
+  // ─── House table ─────────────────────────────────────────────────────────
+  doc.setFillColor(17, 24, 39)
+  doc.roundedRect(M, y, CW, 8, 2, 2, 'F')
+  doc.setTextColor(107, 122, 153); doc.setFontSize(7); doc.setFont('helvetica', 'bold')
+  doc.text('CASA', M + 3, y + 5.5)
+  doc.text('DESCRIPCIÓN BONO', M + 40, y + 5.5)
+  doc.text('PÉRDIDA', M + 100, y + 5.5)
+  doc.text('BENEFICIO', M + 125, y + 5.5)
+  doc.text('TOTAL', W - M - 3, y + 5.5, { align: 'right' })
+  y += 10
 
-  // Table headers
-  const cols = {
-    name: margin,
-    bono: margin + 40,
-    apuesta: margin + 75,
-    perdida: margin + 100,
-    beneficio: margin + 125,
-    total: margin + 155
-  }
-
-  doc.setFillColor(240, 240, 250)
-  doc.rect(margin, y, contentWidth, 7, 'F')
-  doc.setTextColor(80, 80, 100)
-  doc.setFontSize(7)
-  doc.setFont('helvetica', 'bold')
-  doc.text('CASA', cols.name + 2, y + 5)
-  doc.text('BONO (€)', cols.bono, y + 5)
-  doc.text('APUESTA (€)', cols.apuesta, y + 5)
-  doc.text('PÉRDIDA (€)', cols.perdida, y + 5)
-  doc.text('BENEFICIO (€)', cols.beneficio, y + 5)
-  doc.text('TOTAL (€)', cols.total, y + 5)
-  y += 8
-
-  let rowCount = 0
-  activeHouses.forEach(house => {
+  let row = 0
+  for (const house of houses) {
     const entry = entries[house.id]
     const total = calcTotal(entry)
-
-    if (y > 270) {
-      doc.addPage()
-      y = 20
-    }
-
-    doc.setFillColor(rowCount % 2 === 0 ? 252 : 245, rowCount % 2 === 0 ? 252 : 245, rowCount % 2 === 0 ? 255 : 250)
-    doc.rect(margin, y, contentWidth, 7, 'F')
-
-    doc.setTextColor(30, 30, 46)
-    doc.setFontSize(7.5)
-    doc.setFont('helvetica', 'bold')
-    doc.text(house.name, cols.name + 2, y + 5)
-
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(80, 80, 100)
-
-    const fmt = (v: number | null | undefined) => v != null ? v.toFixed(2) : '-'
-    doc.text(fmt(entry?.bono), cols.bono + 15, y + 5, { align: 'right' })
-    doc.text(fmt(entry?.apuesta), cols.apuesta + 20, y + 5, { align: 'right' })
-    doc.text(fmt(entry?.perdida), cols.perdida + 20, y + 5, { align: 'right' })
-    doc.text(fmt(entry?.beneficio), cols.beneficio + 22, y + 5, { align: 'right' })
-
+    if (y > 272) { doc.addPage(); y = 20 }
+    doc.setFillColor(row % 2 === 0 ? 17 : 20, row % 2 === 0 ? 24 : 27, row % 2 === 0 ? 39 : 44)
+    doc.rect(M, y, CW, 7, 'F')
+    doc.setTextColor(232, 234, 240); doc.setFontSize(7); doc.setFont('helvetica', 'bold')
+    doc.text(house.name, M + 3, y + 5)
+    doc.setFont('helvetica', 'normal'); doc.setTextColor(107, 122, 153)
+    const bonoDesc = entry?.bono_desc ? entry.bono_desc.substring(0, 35) : '—'
+    doc.text(bonoDesc, M + 40, y + 5)
+    doc.text(entry?.perdida != null ? `${entry.perdida.toFixed(2)} €` : '—', M + 100, y + 5)
+    doc.text(entry?.beneficio != null ? `${entry.beneficio.toFixed(2)} €` : '—', M + 125, y + 5)
     if (total !== 0) {
-      doc.setTextColor(total >= 0 ? 22 : 200, total >= 0 ? 160 : 30, total >= 0 ? 80 : 30)
+      doc.setTextColor(total > 0 ? 0 : 245, total > 0 ? 230 : 101, total > 0 ? 118 : 101)
       doc.setFont('helvetica', 'bold')
     }
-    doc.text(total !== 0 ? `${total >= 0 ? '+' : ''}${total.toFixed(2)}` : '-', cols.total + 18, y + 5, { align: 'right' })
-
-    y += 7
-    rowCount++
-  })
-
-  // ─── Total row ────────────────────────────────────────────────────────────
-  y += 2
-  doc.setFillColor(30, 30, 46)
-  doc.rect(margin, y, contentWidth, 8, 'F')
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'bold')
-  doc.text('TOTAL', cols.name + 2, y + 5.5)
-  doc.text(`${grandTotal >= 0 ? '+' : ''}${grandTotal.toFixed(2)} €`, cols.total + 18, y + 5.5, { align: 'right' })
-
-  // ─── Footer ───────────────────────────────────────────────────────────────
-  const pageCount = doc.getNumberOfPages()
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i)
-    doc.setFontSize(7)
-    doc.setTextColor(150, 150, 170)
-    doc.setFont('helvetica', 'normal')
-    doc.text(
-      `Bilibets · Página ${i} de ${pageCount} · ${date}`,
-      pageWidth / 2,
-      290,
-      { align: 'center' }
-    )
+    doc.text(total !== 0 ? `${total >= 0 ? '+' : ''}${total.toFixed(2)} €` : '—', W - M - 3, y + 5, { align: 'right' })
+    y += 7; row++
   }
 
-  const filename = playerName
-    ? `bilibets-informe-${playerName.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`
-    : `bilibets-informe-${new Date().toISOString().slice(0, 10)}.pdf`
+  // Total row
+  y += 2
+  doc.setFillColor(0, 230, 118)
+  doc.roundedRect(M, y, CW, 8, 1.5, 1.5, 'F')
+  doc.setTextColor(11, 15, 26); doc.setFontSize(9); doc.setFont('helvetica', 'bold')
+  doc.text('TOTAL', M + 3, y + 5.5)
+  doc.text(`${grandTotal >= 0 ? '+' : ''}${grandTotal.toFixed(2)} €`, W - M - 3, y + 5.5, { align: 'right' })
 
-  doc.save(filename)
+  // ─── Footer ──────────────────────────────────────────────────────────────
+  const pages = doc.getNumberOfPages()
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i)
+    doc.setFontSize(7); doc.setTextColor(107, 122, 153); doc.setFont('helvetica', 'normal')
+    doc.text(`Bilibets · ${session.name} · ${date} · Pág. ${i}/${pages}`, W / 2, 290, { align: 'center' })
+  }
+
+  const fname = playerName
+    ? `bilibets-${session.name.toLowerCase().replace(/\s+/g, '-')}-${playerName.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.pdf`
+    : `bilibets-${session.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`
+  doc.save(fname)
 }
